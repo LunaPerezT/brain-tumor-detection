@@ -2,6 +2,12 @@
 
 A comprehensive pipeline for detecting and segmenting brain tumors (especially low-grade gliomas) from MRI scans. The system combines deep learning models, data preprocessing, and a web interface for easy deployment and use.
 
+## 📈 Interactive Demo
+
+**Test the model's performance live via our web application:**
+
+[![Open Streamlit Demo](https://img.shields.io/badge/-Open%20Demo%20(Streamlit)-00bcd4?style=for-the-badge&logo=streamlit&logoColor=white)](https://braintumor-mri.streamlit.app/)
+
 ## 🚀 Project Overview
 
 We developed a two-stage deep learning pipeline:
