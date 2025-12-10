@@ -20,7 +20,8 @@ We developed a two-stage deep learning pipeline:
 ## 📁 Repository Structure
 
 ```
-├─ data/                    # Raw and processed MRI routes and mask results
+├─ data/
+├─ docs/                  # Raw and processed MRI routes and mask results
 ├─ src/
 │  ├─ backend/             # Flask API backend
 │  │  ├─ app.py           # Main Flask application
