@@ -21,21 +21,21 @@ We developed a two-stage deep learning pipeline:
 
 ├─ [**`data/`**](./data)               Raw and processed MRI routes and mask results    
 │       
-├─ [**`docs/`**](./docs)      [technical guides](./docs) and [presentations]()
+├─ [**`docs/`**](./docs)      [technical guides](./docs/guiatecnica.md) and [presentations](./docs/Deep-Learning-Tumor-MRI.pdf")           
 │           
 ├─ [**`src/`**](./src)           
 │  ├─ [**`backend/`**](./src/backend/)             **Flask API backend**             
-│  │  ├─ [`app.py`](./src/backend/)           Main Flask application        
-│  │  ├─ [`model.py`](./src/backend/)          Model loading and S3 integration       
-│  │  ├─ [`storage.py `](./src/backend/)      S3 prediction storage management       
-│  │  └─ [`models/`](./src/backend/)          Local model cache (models loaded from S3)          
+│  │  ├─ [`app.py`](./src/backend/app.py`)           Main Flask application        
+│  │  ├─ [`model.py`](./src/backend/model.py)          Model loading and S3 integration       
+│  │  ├─ [`storage.py `](./src/backend/storage.py)      S3 prediction storage management       
+│  │  └─ [**`models/`**](./src/backend/models/)          Local model cache (models loaded from S3)          
 │  │                    
-│  └─ [**`frontend/`**](./src/frontend/)          **Streamlit frontend**          
-│     ├─ [`ui.py`](./src/ui.py)          Main [Streamlit application]()     
+│  └─ [**`frontend/`**](./src/frontend/)          [**Streamlit frontend**](https://braintumor-mri.streamlit.app/)                 
+│     ├─ [`ui.py`](./src/ui.py)          Main [Streamlit application](https://braintumor-mri.streamlit.app/)     
 │     ├─ [**`img/ `**](./src/img)          Static images    
 │     └─ [**`static/`**](./src/static)           Static assets     
 │     
-├─ [**`notebooks/`**](./notebook) Jupyter notebooks for [**data exploration**](./notebook), training, evaluation of deep learning [**classification**](./notebooks/) and [**segmengtation models**](./notebooks/)  
+├─ [**`notebooks/`**](./notebook) Jupyter notebooks for [**data exploration**](./notebook/01_Data_Visualization_and_EDA.ipnb), training, evaluation of deep learning [**classification**](./notebooks/02_Deep_Learning_Classification_Model_Development) and [**segmengtation models**](./notebooks/03_Deep_Learning_Segmentation_Model_Development)  
 │         
 ├─ [`requirements-backend.txt`](requirements-backend.txt)      Backend dependencies            
 ├─ [`requirements-frontend.txt`](requirements-frontend.txt)     Frontend dependencies     
