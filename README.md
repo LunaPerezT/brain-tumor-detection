@@ -19,32 +19,31 @@ We developed a two-stage deep learning pipeline:
 
 ## 📁 Repository Structure
 
-├─ `data/`              # Raw and processed MRI routes and mask results    
+├─ [**`data/`**](./data)              # Raw and processed MRI routes and mask results    
 │       
-├─ `docs/`        
+├─ [**`docs/`**](./docs)       #technical guides]() and presentations
 │           
-├─`src/`       
-│  │       
-│  ├─ `backend/`            # Flask API backend             
-│  │  ├─ `app.py`          # Main Flask application        
-│  │  ├─ `model.py`         # Model loading and S3 integration       
-│  │  ├─ `storage.py `      # S3 prediction storage management       
-│  │  └─ `models/`          # Local model cache (models loaded from S3)          
+├─ [**`src/`**](./src)           
+│  ├─ [**`backend/`**](./src/backend/)            # Flask API backend             
+│  │  ├─ [`app.py`](./src/backend/)          # Main Flask application        
+│  │  ├─ [`model.py`](./src/backend/)         # Model loading and S3 integration       
+│  │  ├─ [`storage.py `](./src/backend/)      # S3 prediction storage management       
+│  │  └─ [`models/`](./src/backend/)          # Local model cache (models loaded from S3)          
 │  │                    
-│  └─ frontend/           # Streamlit frontend          
-│     ├─ `ui.py`            # Main Streamlit application     
-│     ├─ `img/ `            # Static images    
-│     └─ `static/`          # Static assets     
+│  └─ [**`frontend/`**](./src/frontend/)          Streamlit frontend          
+│     ├─ [`ui.py`](./src/ui.py)          Main [Streamlit application]()     
+│     ├─ [**`img/ `**](./src/img)          Static images    
+│     └─ [**`static/`**](./src/static)           Static assets     
 │     
-├─ `notebooks/`      # Jupyter notebooks for data exploration, training, evaluation       
-├─ `requirements-backend.txt`    # Backend dependencies         
-├─ `requirements-frontend.txt`   # Frontend dependencies     
-├─ `Dockerfile`             # Dockerfile for local development    
-├─ `Dockerfile.backend`     # Optimized Dockerfile for AWS App Runner  
-├─ `docker-compose.yml`     # Docker Compose for local development  
-├─ `apprunner.yaml`         # AWS App Runner configuration   
-├─ `.env`                   # Environment variables template    
-└─ `README.md`              # This file   
+├─ [**`notebooks/`**](./notebook)     Jupyter notebooks for [data exploration](), training, evaluation       
+├─ [`requirements-backend.txt`](requirements-backend.txt)     # Backend dependencies         
+├─ [`requirements-frontend.txt`](requirements-frontend.txt)    # Frontend dependencies     
+├─ [`Dockerfile`](./Dockerfile)              # Dockerfile for local development    
+├─ [`Dockerfile.backend`](./Dockerfile.backend)      # Optimized Dockerfile for AWS App Runner  
+├─ [`docker-compose.yml`](docker-compose.yml)      # Docker Compose for local development  
+├─ [`apprunner.yaml`](./apprunner.yaml)          # AWS App Runner configuration   
+├─ [`.env`](./env)                    # Environment variables template    
+└─ [`README.md**`](./README.mp)               # This file   
 
 
 ## 🏗️ Architecture
