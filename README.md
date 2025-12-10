@@ -35,8 +35,9 @@ We developed a two-stage deep learning pipeline:
 │     ├─ [**`img/ `**](./src/img)          Static images    
 │     └─ [**`static/`**](./src/static)           Static assets     
 │     
-├─ [**`notebooks/`**](./notebook)     Jupyter notebooks for [**data exploration**](./notebook), training, evaluation of deep learning [classification]() and segmengtation models      
-├─ [`requirements-backend.txt`](requirements-backend.txt)      Backend dependencies         
+├─ [**`notebooks/`**](./notebook) Jupyter notebooks for [**data exploration**](./notebook), training, evaluation of deep learning [**classification**](./notebooks/) and [**segmengtation models**](./notebooks/)  
+│         
+├─ [`requirements-backend.txt`](requirements-backend.txt)      Backend dependencies            
 ├─ [`requirements-frontend.txt`](requirements-frontend.txt)     Frontend dependencies     
 ├─ [`Dockerfile`](./Dockerfile)               Dockerfile for local development    
 ├─ [`Dockerfile.backend`](./Dockerfile.backend)       Optimized Dockerfile for AWS App Runner  
