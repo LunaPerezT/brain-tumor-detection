@@ -2,6 +2,8 @@
 
 A comprehensive pipeline for detecting and segmenting brain tumors (especially low-grade gliomas) from MRI scans. The system combines deep learning models, data preprocessing, and a web interface for easy deployment and use.
 
+This project implements an end-to-end MLOps-ready pipeline for brain tumor detection and segmentation from MRI scans, with a focus on low-grade gliomas. It is designed to bridge experimentation and production by combining deep learning models with robust software and deployment practices.
+
 ## 📈 Interactive Demo
 
 **Test the model's performance live via our web application:**
