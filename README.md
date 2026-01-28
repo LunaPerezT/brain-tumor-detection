@@ -17,6 +17,16 @@ We developed a two-stage deep learning pipeline:
 - The pipeline is supported by data preprocessing, augmentation, and evaluation metrics to ensure robustness and reliability.
 - Deployment via a **Flask backend + Streamlit frontend** transforms the pipeline into a user-friendly diagnostic tool accessible for clinicians and researchers.
 
+
+## 📊 Results & Impact
+
+Thanks to the two-stage approach:
+
+- Classification allows efficient filtering of healthy images, saving computational resources.
+- Segmentation produces precise masks that highlight tumor regions — potentially useful for diagnosis, follow-up, or radiomic studies.
+- The tool is designed to accelerate analysis, reduce human error, and support early detection — which is critical for patient prognosis in low-grade gliomas.
+
+
 ## 📁 Repository Structure
 
 ├─ [**`data/`**](./data)               Raw and processed MRI routes and mask results    
@@ -207,14 +217,6 @@ See `.env` for a complete list. Key variables:
 
 - **Frontend Configuration:**
   - `API_URL`: Backend API URL
-
-## 📊 Results & Impact
-
-Thanks to the two-stage approach:
-
-- Classification allows efficient filtering of healthy images, saving computational resources.
-- Segmentation produces precise masks that highlight tumor regions — potentially useful for diagnosis, follow-up, or radiomic studies.
-- The tool is designed to accelerate analysis, reduce human error, and support early detection — which is critical for patient prognosis in low-grade gliomas.
 
 ## 🔒 Security Notes
 
