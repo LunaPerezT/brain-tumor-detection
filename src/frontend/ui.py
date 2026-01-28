@@ -27,8 +27,7 @@ VIDEO_PATH = BASE_DIR / "video" / "flask_demo.mp4"
 
 # Configuración desde variables de entorno
 # Busca la URL en la configuración de Streamlit Cloud
-API_URL = st.secrets["API_URL"]
-
+API_BASE_URL = "https://brain-tumor-detection-production-a58e.up.railway.app/"
 # CSV files - rutas locales
 ROUTE_LABEL_CSV_LOCAL = DATA_DIR / "route_label.csv"
 SEGMENTATION_ROUTES_LABELS_CSV_LOCAL = DATA_DIR / "segmentation_routes_labels.csv"
@@ -866,152 +865,378 @@ def page_live_prediction():
         """
     )
 
-    st.sidebar.markdown("### ⚙️ Flask API configuration")
-    api_url = st.sidebar.text_input("Base API URL", API_URL)
 
-    endpoint_type = st.sidebar.selectbox(
-        "Tipo de predicción", ["clasificacion", "segmentacion"], index=0
+def decode_base64_image(base64_str):
+    """Decodifica una imagen en base64 a objeto PIL Image"""
+    # Remover el prefijo data:image/png;base64, si existe
+    if "base64," in base64_str:
+        base64_str = base64_str.split("base64,")[1]
+    
+    image_bytes = base64.b64decode(base64_str)
+    return Image.open(BytesIO(image_bytes))
+
+
+def classify_image(image_file=None, use_random=False):
+    """
+    Clasifica una imagen usando la API
+    
+    Args:
+        image_file: Archivo de imagen subido (para opción 1)
+        use_random: Si True, usa endpoint random (para opción 2)
+    
+    Returns:
+        dict con la respuesta de la API o None si hay error
+    """
+    try:
+        if use_random:
+            # Opción 2: Imagen aleatoria
+            response = requests.get(f"{API_BASE_URL}/clasificacion/predict/random")
+        else:
+            # Opción 1: Imagen subida
+            if image_file is None:
+                return None
+            
+            # Resetear el puntero del archivo
+            image_file.seek(0)
+            files = {"image": image_file}
+            response = requests.post(f"{API_BASE_URL}/clasificacion/predict", files=files)
+        
+        if response.status_code == 200:
+            return response.json()
+        else:
+            st.error(f"Error en clasificación: {response.status_code} - {response.text}")
+            return None
+    
+    except requests.exceptions.ConnectionError:
+        st.error("❌ No se pudo conectar con la API. Verifica que esté ejecutándose.")
+        return None
+    except Exception as e:
+        st.error(f"Error al clasificar imagen: {str(e)}")
+        return None
+
+
+def segment_image(image_file=None, use_random=False):
+    """
+    Segmenta una imagen usando la API
+    
+    Args:
+        image_file: Archivo de imagen subido (para opción 1)
+        use_random: Si True, usa endpoint random (para opción 2)
+    
+    Returns:
+        dict con la respuesta de la API o None si hay error
+    """
+    try:
+        if use_random:
+            # Opción 2: Imagen aleatoria
+            response = requests.get(f"{API_BASE_URL}/segmentacion/predict/random")
+        else:
+            # Opción 1: Imagen subida
+            if image_file is None:
+                return None
+            
+            # Resetear el puntero del archivo
+            image_file.seek(0)
+            files = {"image": image_file}
+            response = requests.post(f"{API_BASE_URL}/segmentacion/predict", files=files)
+        
+        if response.status_code == 200:
+            return response.json()
+        else:
+            st.error(f"Error en segmentación: {response.status_code} - {response.text}")
+            return None
+    
+    except requests.exceptions.ConnectionError:
+        st.error("❌ No se pudo conectar con la API. Verifica que esté ejecutándose.")
+        return None
+    except Exception as e:
+        st.error(f"Error al segmentar imagen: {str(e)}")
+        return None
+
+
+def show_classification_result(result):
+    """Muestra el resultado de clasificación con formato"""
+    if not result:
+        return
+    
+    prediction_label = result.get("prediction_label", "")
+    confidence = result.get("confidence", "0%")
+    
+    # Determinar si es positivo (tumor detectado)
+    is_positive = "Detectado" in prediction_label or "(1)" in prediction_label
+    
+    # Mostrar resultado con color según predicción
+    if is_positive:
+        st.error(f"🔴 **Resultado:** {prediction_label}")
+        st.metric("Nivel de Confianza", confidence)
+        return True  # Retorna True si es positivo
+    else:
+        st.success(f"🟢 **Resultado:** {prediction_label}")
+        st.metric("Nivel de Confianza", confidence)
+        return False  # Retorna False si es negativo
+
+
+def overlay_mask_on_image(original_image, mask_image, alpha=0.5):
+    """
+    Superpone la máscara de segmentación sobre la imagen original
+    
+    Args:
+        original_image: PIL Image original
+        mask_image: PIL Image de la máscara
+        alpha: Transparencia de la máscara (0-1)
+    
+    Returns:
+        PIL Image con la máscara superpuesta
+    """
+    # Asegurar que ambas imágenes tienen el mismo tamaño
+    if original_image.size != mask_image.size:
+        mask_image = mask_image.resize(original_image.size, Image.Resampling.LANCZOS)
+    
+    # Convertir a RGB si es necesario
+    if original_image.mode != "RGB":
+        original_image = original_image.convert("RGB")
+    if mask_image.mode != "RGB":
+        mask_image = mask_image.convert("RGB")
+    
+    # Convertir a arrays numpy
+    orig_array = np.array(original_image).astype(np.float32)
+    mask_array = np.array(mask_image).astype(np.float32)
+    
+    # Crear máscara coloreada (rojo para tumor)
+    colored_mask = np.zeros_like(orig_array)
+    colored_mask[:, :, 0] = mask_array[:, :, 0]  # Canal rojo
+    
+    # Superponer con transparencia
+    overlay = (1 - alpha) * orig_array + alpha * colored_mask
+    overlay = np.clip(overlay, 0, 255).astype(np.uint8)
+    
+    return Image.fromarray(overlay)
+
+
+def main():
+    """Función principal de la página de predicción"""
+    
+    st.title("🧠 Detección de Tumores Cerebrales")
+    st.markdown("### Sistema de Clasificación y Segmentación con IA")
+    
+    st.markdown("---")
+    
+    # Verificar conexión con API
+    try:
+        health_response = requests.get(f"{API_BASE_URL}/health", timeout=2)
+        if health_response.status_code != 200:
+            st.warning("⚠️ La API está respondiendo pero puede tener problemas. Verifica el estado.")
+    except:
+        st.error("❌ No se pudo conectar con la API. Asegúrate de que esté ejecutándose en " + API_BASE_URL)
+        st.stop()
+    
+    # Selector de modo
+    st.subheader("Selecciona el modo de entrada")
+    
+    mode = st.radio(
+        "¿Cómo deseas proporcionar la imagen?",
+        ["📤 Subir imagen MRI (.tif)", "🎲 Usar imagen aleatoria de la base de datos"],
+        index=0
     )
-
-    uploaded_file = st.file_uploader(
-        "Upload an MRI image (PNG/JPG)", type=["png", "jpg", "jpeg", "tif", "tiff"]
-    )
-
-    st.warning(
-        """
-        Never upload real patient-identifiable data to public demos.
-        In real projects, DICOM images must be properly anonymized (removing names,
-        IDs and any facial features) and handled under strict data protection and
-        ethical guidelines.
-        """
-    )
-
-    if uploaded_file is not None:
-        pil_img = Image.open(uploaded_file)
-        st.image(pil_img, caption="Uploaded MRI", use_column_width=True)
-
-        if st.button("Analyze MRI"):
-            with st.spinner("Querying Flask model..."):
-                try:
-                    response = call_flask_model(
-                        api_url, pil_img, endpoint=endpoint_type
-                    )
-                except requests.exceptions.HTTPError as e:
-                    status_code = e.response.status_code if e.response else None
-                    error_msg = ""
-
-                    if status_code == 503:
-                        error_msg = (
-                            f"❌ El servicio del backend no está disponible (503). "
-                            f"Verifica que Railway esté ejecutándose y accesible en {api_url}"
+    
+    st.markdown("---")
+    
+    # Variables para almacenar datos
+    uploaded_file = None
+    use_random = False
+    
+    # Opción 1: Subir imagen
+    if mode == "📤 Subir imagen MRI (.tif)":
+        st.subheader("📤 Cargar Imagen MRI")
+        uploaded_file = st.file_uploader(
+            "Selecciona un archivo de imagen MRI",
+            type=["tif", "tiff", "png", "jpg", "jpeg"],
+            help="Formatos soportados: .tif, .tiff, .png, .jpg, .jpeg"
+        )
+        
+        if uploaded_file is not None:
+            # Mostrar vista previa
+            st.success(f"✅ Archivo cargado: **{uploaded_file.name}**")
+            
+            try:
+                image = Image.open(uploaded_file)
+                col1, col2, col3 = st.columns([1, 2, 1])
+                with col2:
+                    st.image(image, caption="Vista previa de la imagen", use_container_width=True)
+            except Exception as e:
+                st.error(f"Error al cargar la imagen: {str(e)}")
+                uploaded_file = None
+    
+    # Opción 2: Imagen aleatoria
+    else:
+        st.subheader("🎲 Imagen Aleatoria")
+        st.info("Se seleccionará una imagen aleatoria del dataset de la base de datos.")
+        use_random = True
+    
+    st.markdown("---")
+    
+    # Botón de análisis
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        analyze_button = st.button(
+            "🔍 Analizar Imagen",
+            type="primary",
+            use_container_width=True,
+            disabled=(not use_random and uploaded_file is None)
+        )
+    
+    # Procesamiento cuando se presiona el botón
+    if analyze_button:
+        with st.spinner("🔄 Procesando imagen..."):
+            
+            # PASO 1: CLASIFICACIÓN
+            st.markdown("---")
+            st.subheader("📊 Paso 1: Clasificación")
+            
+            with st.spinner("Clasificando imagen..."):
+                classification_result = classify_image(
+                    image_file=uploaded_file,
+                    use_random=use_random
+                )
+            
+            if classification_result:
+                # Mostrar resultado de clasificación
+                is_positive = show_classification_result(classification_result)
+                
+                # Mostrar información adicional
+                if not use_random and "prediction_id" in classification_result:
+                    with st.expander("ℹ️ Información adicional"):
+                        st.text(f"ID de predicción: {classification_result['prediction_id']}")
+                        if "filename" in classification_result:
+                            st.text(f"Archivo: {classification_result['filename']}")
+                
+                # PASO 2: SEGMENTACIÓN (solo si es positivo)
+                if is_positive:
+                    st.markdown("---")
+                    st.subheader("🎯 Paso 2: Segmentación del Tumor")
+                    st.info("⚠️ Se ha detectado un tumor. Procediendo con la segmentación...")
+                    
+                    with st.spinner("Generando máscara de segmentación..."):
+                        segmentation_result = segment_image(
+                            image_file=uploaded_file,
+                            use_random=use_random
                         )
-                    elif status_code == 404:
-                        error_msg = (
-                            f"❌ Endpoint no encontrado (404). "
-                            f"Verifica que la URL de la API sea correcta: {api_url}"
-                        )
-                    elif status_code == 500:
-                        error_msg = (
-                            "❌ Error interno del servidor (500). "
-                            "El backend encontró un error al procesar la imagen."
-                        )
-                    elif status_code == 400:
-                        error_msg = (
-                            "❌ Solicitud inválida (400). "
-                            "Verifica que la imagen sea válida y esté en un formato soportado."
-                        )
-                    elif status_code:
-                        error_msg = (
-                            f"❌ Error HTTP {status_code} desde el servidor. "
-                            f"Detalles: {str(e)}"
-                        )
+                    
+                    if segmentation_result and segmentation_result.get("success"):
+                        st.success("✅ Segmentación completada exitosamente")
+                        
+                        # Obtener la máscara
+                        mask_base64 = segmentation_result.get("mask_base64", "")
+                        
+                        if mask_base64:
+                            try:
+                                # Decodificar la máscara
+                                mask_image = decode_base64_image(mask_base64)
+                                
+                                # Mostrar resultados en columnas
+                                st.markdown("### 🖼️ Resultados de Segmentación")
+                                
+                                col1, col2 = st.columns(2)
+                                
+                                with col1:
+                                    st.markdown("**Imagen Original**")
+                                    if use_random:
+                                        st.info("Imagen aleatoria del dataset")
+                                    else:
+                                        st.image(
+                                            Image.open(uploaded_file),
+                                            caption="Imagen MRI original",
+                                            use_container_width=True
+                                        )
+                                
+                                with col2:
+                                    st.markdown("**Máscara de Segmentación**")
+                                    st.image(
+                                        mask_image,
+                                        caption="Región del tumor detectada",
+                                        use_container_width=True
+                                    )
+                                
+                                # Opción de superposición (solo si no es random)
+                                if not use_random and uploaded_file:
+                                    st.markdown("---")
+                                    st.markdown("### 🔬 Visualización Superpuesta")
+                                    
+                                    try:
+                                        original_image = Image.open(uploaded_file)
+                                        overlay_image = overlay_mask_on_image(
+                                            original_image,
+                                            mask_image,
+                                            alpha=0.4
+                                        )
+                                        
+                                        col1, col2, col3 = st.columns([1, 2, 1])
+                                        with col2:
+                                            st.image(
+                                                overlay_image,
+                                                caption="Tumor superpuesto en la imagen original",
+                                                use_container_width=True
+                                            )
+                                    except Exception as e:
+                                        st.warning(f"No se pudo generar la visualización superpuesta: {str(e)}")
+                                
+                                # Información adicional
+                                if "segmentation_id" in segmentation_result:
+                                    with st.expander("ℹ️ Información de segmentación"):
+                                        st.text(f"ID de segmentación: {segmentation_result['segmentation_id']}")
+                                        if "filename" in segmentation_result:
+                                            st.text(f"Archivo: {segmentation_result['filename']}")
+                                
+                            except Exception as e:
+                                st.error(f"Error al procesar la máscara de segmentación: {str(e)}")
                     else:
-                        error_msg = f"❌ Error HTTP: {str(e)}"
-
-                    st.error(error_msg)
-                    logger.error(f"Error HTTP en page_live_prediction: {status_code} - {e}")
-                    return
-                except requests.exceptions.ConnectionError:
-                    st.error(
-                        f"❌ No se pudo conectar a la API en {api_url}. "
-                        f"Verifica que el backend esté ejecutándose y que la URL sea correcta."
-                    )
-                    logger.error(f"Error de conexión en page_live_prediction: {api_url}")
-                    return
-                except requests.exceptions.Timeout:
-                    st.error(
-                        "⏱️ La solicitud tardó demasiado. Intenta con una imagen más pequeña."
-                    )
-                    logger.error("Timeout en page_live_prediction")
-                    return
-                except Exception as e:
-                    st.error(f"❌ Error inesperado llamando a la API: {e}")
-                    logger.error(f"Error en page_live_prediction: {e}", exc_info=True)
-                    return
-
-            st.markdown("### Model result")
-
-            if not response.get("success", False):
-                st.error(
-                    f"La API retornó un error: {response.get('error', 'Error desconocido')}"
-                )
-                return
-
-            if endpoint_type == "clasificacion":
-                # Procesar respuesta de clasificación
-                pred_label = response.get("prediction_label", "")
-                confidence_str = response.get("confidence", "0%")
-
-                # Extraer valor numérico de confidence (formato "XX.XX%")
-                try:
-                    confidence = float(confidence_str.replace("%", "")) / 100
-                except:
-                    confidence = 0.0
-
-                has_tumor = "Detectado" in pred_label or "(1)" in pred_label
-                diagnosis = "TUMOR DETECTED" if has_tumor else "NO SIGNS OF TUMOR"
-                color = "🔴" if has_tumor else "🟢"
-
-                st.metric(label="Model diagnosis", value=f"{color} {diagnosis}")
-                st.metric(label="Prediction", value=pred_label)
-                st.metric(label="Confidence", value=confidence_str)
-
-                st.markdown(
-                    """
-                    The reported confidence should be interpreted as an approximate
-                    **risk score**, not as a definitive diagnosis. Values close to 50%
-                    usually indicate uncertainty; in that range, the model should only
-                    be used as a prompt for closer human review, never as an automatic
-                    decision-maker.
-                    """
-                )
+                        st.error("❌ No se pudo realizar la segmentación")
+                
+                else:
+                    # Si es negativo, no hay segmentación
+                    st.markdown("---")
+                    st.info("✅ No se requiere segmentación. No se detectó tumor en la imagen.")
+            
             else:
-                # Procesar respuesta de segmentación
-                mask_b64 = response.get("mask_base64", None)
-                if mask_b64:
-                    st.markdown("### Segmentation mask")
-                    try:
-                        # Extraer base64 si viene con data URI prefix
-                        if "," in mask_b64:
-                            mask_b64 = mask_b64.split(",")[1]
-                        mask_arr = decode_mask_from_b64(mask_b64)
-                        st.image(
-                            mask_arr,
-                            caption="Mask predicted by the model",
-                            use_container_width=True,
-                        )
-                    except Exception as e:
-                        st.info(
-                            f"The mask returned by the API could not be decoded: {e}"
-                        )
-                        logger.error(f"Error decodificando máscara: {e}")
-
-                    st.caption(
-                        "Segmentation masks allow automatic computation of tumor volume and shape "
-                        "features (radiomics), which can be correlated with prognosis or molecular "
-                        "subtypes in research studies."
-                    )
-
+                st.error("❌ No se pudo realizar la clasificación")
+    
+    # Información adicional en la barra lateral
+    with st.sidebar:
+        st.markdown("### 📖 Información")
+        st.markdown("""
+        **Proceso de análisis:**
+        
+        1️⃣ **Clasificación**: El modelo ResNet determina si hay tumor presente
+        
+        2️⃣ **Segmentación**: Si se detecta tumor, el modelo ResUNet localiza su ubicación exacta
+        
+        ---
+        
+        **Clases de clasificación:**
+        - 🟢 No detectado (0)
+        - 🔴 Detectado (1)
+        
+        ---
+        
+        **API Status:**
+        """)
+        
+        try:
+            health_response = requests.get(f"{API_BASE_URL}/health", timeout=2)
+            if health_response.status_code == 200:
+                health_data = health_response.json()
+                if health_data.get("status") == "healthy":
+                    st.success("✅ API Operativa")
+                    st.json({
+                        "Modelos cargados": health_data.get("models_loaded"),
+                        "Almacenamiento": health_data.get("storage_configured")
+                    })
+                else:
+                    st.warning("⚠️ API con problemas")
+            else:
+                st.error("❌ API no responde")
+        except:
+            st.error("❌ Sin conexión")
 
 def page_media():
     st.header("🎥 Flask Backend Visual demo")
